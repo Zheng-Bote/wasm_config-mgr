@@ -12,6 +12,7 @@ touches:
   - Example/**
   - README.md
   - README_de.md
+  - CHANGELOG.md
   - .github/**
 ---
 
