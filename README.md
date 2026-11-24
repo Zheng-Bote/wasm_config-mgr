@@ -39,6 +39,8 @@ It encrypts INI files including an embedded access policy manifest (`[__policy__
   - **Passphrase Derivation via Argon2id** (128-bit random salt stored in header) via `WASM_CONFIG_PASSPHRASE` or `--passphrase`.
 - **Embedded Policy Manifest (`[__policy__]`):** Access rules (which client may read which `section.key` patterns, including wildcards such as `stripe.*`) are stored directly inside the encrypted INI file and are thus tamper-proof.
 - **Cryptographic Client Authorization:** Supports both **HMAC-SHA256** and **Ed25519** signatures over canonical request messages (`wasm-config-mgr:v1:<client_id>:<section>:<key>`).
+- **WASI Component Model (WIT Export):** Exports `wasm-config:provider/reader@0.1.0` (`wit/config-provider.wit`) for direct in-process retrieval by other WASI Preview 2 components.
+- **Fermyon Spin Micro-Vault HTTP Service (`wasi:http`):** Provides a lightweight, serverless HTTP endpoint (`spin/spin.toml` / `POST /v1/config/get`) delivering sealed values to microservices and containers.
 - **Memory Safety:** Sensitive key material and decrypted plaintext in RAM are zeroed after use with `zeroize`.
 
 ---
@@ -307,6 +309,56 @@ The directory [`./Example`](Example/) contains a runnable end-to-end example dem
 
 ```bash
 python3 Example/query_db_config.py
+```
+
+---
+
+## WASI Component Model & Fermyon Spin HTTP Service
+
+### 1. WIT Interface (`wit/config-provider.wit`)
+Other WASI Preview 2 components can consume `wasm_config-mgr` directly in-process via the typed WIT interface:
+```wit
+package wasm-config:provider@0.1.0;
+
+interface reader {
+    get-sealed: func(container-path: string, section: string, key: string, token: string, env-name: string) -> result<string, string>;
+    unseal-hmac: func(sealed-value: string, client-id: string, section: string, key: string, env-name: string, secret-hex: string) -> result<string, string>;
+}
+
+world config-provider {
+    export reader;
+}
+```
+
+### 2. Fermyon Spin HTTP Service (`spin/spin.toml`)
+The Spin micro-vault HTTP service runs on top of `wasi:http` and listens for queries on `/v1/config/get`:
+```bash
+# Build the Spin WASI Preview 2 component
+cargo build --bin wasm_config_provider_spin --target wasm32-wasip2 --release
+
+# Run with Fermyon Spin
+spin up --file spin/spin.toml
+```
+
+#### Querying via HTTP:
+```bash
+curl -X POST http://127.0.0.1:3000/v1/config/get \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "container_path": "Example/db_config.wcfg",
+    "section": "database",
+    "key": "password",
+    "env_name": "DB_PASSWORD"
+  }'
+```
+Response:
+```json
+{
+  "status": "ok",
+  "env_name": "DB_PASSWORD",
+  "sealed_value": "wcfg-sealed:v1:hmac:..."
+}
 ```
 
 ---

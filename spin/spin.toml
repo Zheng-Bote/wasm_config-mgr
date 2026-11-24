@@ -1,0 +1,19 @@
+spin_manifest_version = 2
+
+[application]
+name = "wasm-config-provider"
+version = "0.1.0"
+authors = ["Zheng-Bote <zheng.bote@googlemail.com>"]
+description = "Fermyon Spin Micro-Vault HTTP Service for wasm-config-mgr"
+
+[[trigger.http]]
+route = "/v1/config/..."
+component = "config-service"
+
+[component.config-service]
+source = "target/wasm32-wasip2/release/wasm_config_provider_spin.wasm"
+files = [{ source = "Example/", destination = "Example/" }]
+environment = { WASM_CONFIG_MASTER_KEY = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" }
+[component.config-service.build]
+command = "cargo build --bin wasm_config_provider_spin --target wasm32-wasip2 --release"
+watch = ["src/**/*.rs", "Cargo.toml"]

@@ -17,4 +17,8 @@ hmac = "0.12.1"
 sha2 = "0.10.9"
 subtle = "2.6.1"
 thiserror = "2.0.20"
+wit-bindgen = { version = "0.40.0", optional = true }
 zeroize = { version = "1.9.0", features = ["derive"] }
+
+[features]
+wit-bindgen = ["dep:wit-bindgen"]
