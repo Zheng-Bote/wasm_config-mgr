@@ -39,6 +39,8 @@ Es verschlüsselt INI-Dateien inklusive eines eingebetteten Zugriffs-Manifests (
   - **Passphrasen-Ableitung via Argon2id** (128-Bit Zufalls-Salt im Header) über `WASM_CONFIG_PASSPHRASE` oder `--passphrase`.
 - **Eingebettetes Policy-Manifest (`[__policy__]`):** Die Zugriffsregeln (welcher Client welche `section.key`-Einträge lesen darf, inkl. Wildcards wie `stripe.*`) sind direkt in der verschlüsselten INI-Datei hinterlegt und somit selbst vor Manipulation geschützt.
 - **Kryptografische Client-Autorisierung:** Unterstützt sowohl **HMAC-SHA256** als auch **Ed25519**-Signaturen über kanonische Anfragen (`wasm-config-mgr:v1:<client_id>:<section>:<key>`).
+- **WASI Component Model (WIT Export):** Exportiert `wasm-config:provider/reader@0.1.0` (`wit/config-provider.wit`) für den direkten typisierten In-Process-Aufruf durch andere WASI Preview 2 Komponenten.
+- **Fermyon Spin Micro-Vault HTTP Service (`wasi:http`):** Stellt einen leichtgewichtigen, serverlosen HTTP-Dienst (`spin/spin.toml` / `POST /v1/config/get`) bereit, der versiegelte Konfigurationen an Microservices oder Container ausliefert.
 - **Speichersicherheit:** Sensible Schlüsselmaterialien und entschlüsselte Klartexte im RAM werden nach Gebrauch automatisch mit `zeroize` überschrieben.
 
 ---
@@ -308,6 +310,56 @@ Im Ordner [`./Example`](Example/) befindet sich ein direkt ausführbares Ende-zu
 
 ```bash
 python3 Example/query_db_config.py
+```
+
+---
+
+## WASI Component Model & Fermyon Spin HTTP Service
+
+### 1. WIT-Interface (`wit/config-provider.wit`)
+Andere WASI Preview 2 Komponenten können `wasm_config-mgr` direkt In-Process über das typisierte WIT-Interface einbinden:
+```wit
+package wasm-config:provider@0.1.0;
+
+interface reader {
+    get-sealed: func(container-path: string, section: string, key: string, token: string, env-name: string) -> result<string, string>;
+    unseal-hmac: func(sealed-value: string, client-id: string, section: string, key: string, env-name: string, secret-hex: string) -> result<string, string>;
+}
+
+world config-provider {
+    export reader;
+}
+```
+
+### 2. Fermyon Spin HTTP Service (`spin/spin.toml`)
+Der Spin Micro-Vault HTTP Service setzt auf `wasi:http` auf und beantwortet Anfragen unter `/v1/config/get`:
+```bash
+# Baue die Spin-WASI-Preview-2-Komponente
+cargo build --bin wasm_config_provider_spin --target wasm32-wasip2 --release
+
+# Mit Fermyon Spin starten
+spin up --file spin/spin.toml
+```
+
+#### HTTP-Abfrage-Beispiel:
+```bash
+curl -X POST http://127.0.0.1:3000/v1/config/get \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "container_path": "Example/db_config.wcfg",
+    "section": "database",
+    "key": "password",
+    "env_name": "DB_PASSWORD"
+  }'
+```
+Antwort:
+```json
+{
+  "status": "ok",
+  "env_name": "DB_PASSWORD",
+  "sealed_value": "wcfg-sealed:v1:hmac:..."
+}
 ```
 
 ---

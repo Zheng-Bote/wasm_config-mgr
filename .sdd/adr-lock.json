@@ -2,6 +2,7 @@
   "version": 1,
   "entries": {
     "docs/adr/0001-wasi-aes256-architecture.md": "74bf4e41f3f412ef5286dfde08e22da0a61fe2c9e2ab9b899fbbcfeb0d5bc2fc",
-    "docs/adr/0002-response-sealing-no-plaintext-stdout.md": "b9cf72c648d103893d43ede67f27ba840cf69f3ac0140a10d3a87a266d82f4a8"
+    "docs/adr/0002-response-sealing-no-plaintext-stdout.md": "b9cf72c648d103893d43ede67f27ba840cf69f3ac0140a10d3a87a266d82f4a8",
+    "docs/adr/0003-wit-component-and-spin-http-provider.md": "52c77fbde263b777773c4c8df1e9029cafe90d1d95d45c494c49e255f582f6a2"
   }
 }

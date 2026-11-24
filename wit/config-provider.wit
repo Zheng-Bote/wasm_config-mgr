@@ -1,0 +1,17 @@
+package wasm-config:provider@0.1.0;
+
+/// Interface for reading and unsealing configuration values.
+interface reader {
+    /// Retrieves an end-to-end sealed configuration value from a container.
+    ///
+    /// Returns the sealed value string (e.g., `wcfg-sealed:v1:hmac:...`).
+    get-sealed: func(container-path: string, section: string, key: string, token: string, env-name: string) -> result<string, string>;
+
+    /// Unseals a `wcfg-sealed:v1:hmac:...` value using the client's HMAC secret.
+    unseal-hmac: func(sealed-value: string, client-id: string, section: string, key: string, env-name: string, secret-hex: string) -> result<string, string>;
+}
+
+/// The world that export the reader interface.
+world config-provider {
+    export reader;
+}
